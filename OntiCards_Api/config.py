@@ -99,7 +99,8 @@ Weaviate_url = get_env('WEAVIATE_URL')
 
 
 def get_bool_env(key):
-    return get_env(key).lower() == 'true'
+    value = get_env(key)
+    return value.lower() == 'true' if value is not None else False
 
 
 def get_cors_allow_origins(env, default):
