@@ -195,9 +195,16 @@ http://your-ip:9107
 
 - [常見問題FAQ](http://www.onticards.com/docs/zh-cn/faq.html)：高頻使用問題解答
 
-## 🤝 參與貢獻
+## 🤝 參與貢獻與問題反饋
 
-歡迎各位開發者提交 **Issue、Feature Request、Pull Request**，共同迭代優化項目！
+歡迎各位開發者參與 OntiCards 的建設！
+
+- 🐛 **如遇到 Bug、部署異常或其他使用問題，請透過 [GitHub Issues](https://github.com/stepll2026/OntiCards/issues) 提交反饋。**
+- 💡 功能建議與明確需求亦可透過 [GitHub Issues](https://github.com/stepll2026/OntiCards/issues) 提交。
+- 💬 使用交流、技術討論及經驗分享，歡迎前往 [GitHub Discussions](https://github.com/stepll2026/OntiCards/discussions)。
+- 🔧 程式碼貢獻歡迎提交 Pull Request。
+
+提交 Issue 時，請盡量提供 OntiCards 版本、部署環境、重現步驟及相關日誌，以便快速定位問題。
 
 貢獻規範：詳見 `./CONTRIBUTING.md`
 

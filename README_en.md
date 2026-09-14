@@ -195,9 +195,16 @@ Full walkthrough: [User Guide](http://www.onticards.com/docs/zh-cn/user-guide.ht
 
 - [FAQ](http://www.onticards.com/docs/zh-cn/faq.html): answers to common questions
 
-## 🤝 Contributing
+## 🤝 Contributing & Feedback
 
-Issues, feature requests, and pull requests are all welcome — let's build this together!
+Contributions to OntiCards are welcome!
+
+- 🐛 **If you encounter a bug, deployment issue, or other reproducible problem, please report it through [GitHub Issues](https://github.com/stepll2026/OntiCards/issues).**
+- 💡 Feature requests and concrete improvement proposals can also be submitted through [GitHub Issues](https://github.com/stepll2026/OntiCards/issues).
+- 💬 For general questions, technical discussions, and experience sharing, please use [GitHub Discussions](https://github.com/stepll2026/OntiCards/discussions).
+- 🔧 Code contributions are welcome through Pull Requests.
+
+When submitting an Issue, please include your OntiCards version, deployment environment, reproduction steps, and relevant logs whenever possible.
 
 Contribution guidelines: see `./CONTRIBUTING.md`
 
