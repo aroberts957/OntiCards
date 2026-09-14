@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+
+contact_links:
+  - name: "💬 GitHub Discussions"
+    url: "https://github.com/stepll2026/OntiCards/discussions"
+    about: "使用咨询、技术交流、方案讨论和经验分享，请优先前往 Discussions。"
+
+  - name: "📚 OntiCards Documentation"
+    url: "http://www.onticards.com/docs/zh-cn/"
+    about: "部署、使用、API、SSO、FAQ 和问题排查请先查看官方文档。"

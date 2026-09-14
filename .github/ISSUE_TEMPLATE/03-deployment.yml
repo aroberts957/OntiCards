@@ -1,0 +1,139 @@
+name: "🚀 Deployment Issue"
+description: "反馈 OntiCards 安装、Docker Compose、升级或运行环境问题"
+title: "[Deployment] "
+labels:
+  - deployment
+body:
+  - type: markdown
+    attributes:
+      value: |
+        此模板用于 OntiCards 安装、部署、升级及运行环境相关问题。
+
+        提交前建议先阅读：
+        http://www.onticards.com/docs/zh-cn/deployment.html
+
+        ⚠️ 请勿上传完整 .env 文件。
+        ⚠️ 请勿提交数据库密码、API Key、Token、Secret、Cookie 等敏感信息。
+
+  - type: input
+    id: version
+    attributes:
+      label: OntiCards 版本
+      placeholder: "例如：v2.4.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: "例如：Ubuntu 22.04 x86_64"
+    validations:
+      required: true
+
+  - type: input
+    id: docker
+    attributes:
+      label: Docker 版本
+      placeholder: "例如：Docker 27.5.1"
+    validations:
+      required: true
+
+  - type: input
+    id: compose
+    attributes:
+      label: Docker Compose 版本
+      placeholder: "例如：Docker Compose v2.32.4"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 问题发生阶段
+      options:
+        - 首次安装
+        - docker compose build
+        - docker compose up
+        - 数据库初始化
+        - PostgreSQL 连接
+        - Weaviate 启动或连接
+        - OntiCards API 启动
+        - OntiCards Web 启动
+        - Nginx 或页面访问
+        - LLM / Embedding / Rerank 配置
+        - 版本升级
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: 执行的命令
+      description: 请填写发生问题前执行的主要命令。
+      placeholder: |
+        docker compose config -q
+        docker compose up -d --build
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 请说明目前出现的现象。
+      placeholder: |
+        例如：
+        docker compose up -d --build 后 API 容器不断重启，无法访问 9107 端口。
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志
+      description: |
+        建议提供相关容器日志。
+        请先删除密码、Token、API Key、Secret、数据库连接凭据等敏感信息。
+      placeholder: |
+        可以提供例如：
+        docker compose ps
+        docker compose logs --tail=200
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: 是否修改过默认配置
+      description: |
+        请说明是否修改过 docker-compose.yaml、Nginx、端口、数据库配置等。
+        不要粘贴完整 .env，只描述修改项即可。
+      placeholder: |
+        例如：
+        - 将外部访问端口从 9107 修改为 8080
+        - 使用外部 PostgreSQL
+        - 未修改其他配置
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 其他补充信息
+      description: 可以上传截图或补充其他环境信息。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: "我已经阅读部署文档和现有 Issues。"
+          required: true
+        - label: "我没有提交 .env、数据库密码、Token、API Key、Secret 等敏感信息。"
+          required: true

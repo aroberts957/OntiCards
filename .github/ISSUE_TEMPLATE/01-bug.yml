@@ -1,0 +1,110 @@
+name: "🐛 Bug Report"
+description: "报告 OntiCards 中可复现的软件缺陷或异常"
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你帮助改进 OntiCards。
+
+        提交前请确认这确实是一个可复现的软件问题。
+        如果只是使用咨询、方案讨论或经验交流，请优先前往 GitHub Discussions。
+
+        ⚠️ 请勿提交数据库密码、API Key、Token、Secret、Cookie 或其他敏感信息。
+
+  - type: input
+    id: version
+    attributes:
+      label: OntiCards 版本
+      description: 请填写你当前使用的 OntiCards 版本。
+      placeholder: "例如：v2.4.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: 部署方式
+      description: 请选择当前使用的部署方式。
+      options:
+        - Docker Compose
+        - Docker
+        - 源码运行
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 操作系统
+      placeholder: "例如：Ubuntu 22.04 x86_64"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述
+      description: 请清晰说明你遇到的问题以及实际发生的情况。
+      placeholder: |
+        例如：
+        打开数据源管理页面后，点击“测试连接”，页面提示连接失败。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 请提供可以稳定复现问题的操作步骤。
+      placeholder: |
+        1. 登录 OntiCards
+        2. 进入“数据源管理”
+        3. 新增 PostgreSQL 数据源
+        4. 点击“测试连接”
+        5. 页面提示……
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 请描述你认为正确的行为应该是什么。
+      placeholder: "例如：数据库配置正确时，应提示连接成功。"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或错误信息
+      description: |
+        请粘贴与问题相关的日志、报错信息或堆栈。
+        请务必删除密码、Token、API Key、Cookie、Secret 等敏感信息。
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图或补充信息
+      description: |
+        如有需要，可直接将截图拖入此区域。
+        也可以补充浏览器版本、数据库类型、LLM 类型等信息。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: "我已经搜索现有 Issues，确认没有相同或高度相似的问题。"
+          required: true
+        - label: "我已经移除了日志和截图中的密码、Token、API Key、Secret 等敏感信息。"
+          required: true
