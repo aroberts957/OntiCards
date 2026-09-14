@@ -132,7 +132,7 @@ git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
 # 2. 初始化环境变量
-cp .env.example .env
+cp .env.prod .env
 chmod 600 .env
 
 # 3. 校验配置并一键启动

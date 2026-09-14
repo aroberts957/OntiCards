@@ -132,7 +132,7 @@ git clone https://github.com/stepll2026/OntiCards.git
 cd OntiCards
 
 # 2. Initialize environment variables
-cp .env.example .env
+cp .env.prod .env
 chmod 600 .env
 
 # 3. Validate the configuration and start everything with one command
