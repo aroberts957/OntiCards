@@ -51,6 +51,11 @@ def delete_records_by_ids(ids: list) -> bool:
         # 获取数据库会话
         session = db.session  # 使用当前的数据库会话
 
+        # 空列表直接返回，避免无意义的“删除 0 条”误导日志
+        if not ids:
+            print("[INFO] 待删除的 id 列表为空，跳过删除")
+            return True
+
         # 遍历 ids 列表，逐一删除记录
         for record_id in ids:
             record = DataCardDataSource.query.filter_by(doc_id=record_id).first()  # 查找记录

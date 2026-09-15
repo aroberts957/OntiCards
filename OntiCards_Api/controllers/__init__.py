@@ -15,6 +15,7 @@ from controllers.datasource.dataaudit.data_audit import bp_data_audit
 from controllers.datasource.database_schema_extractor import extract_schema_from_db
 from controllers.datasource.datasource_tool import datasource_tool_bp
 from controllers.datasource.filedfill.extract_field_data_by_excle import extract_field_data_excel
+from controllers.datasource.filedfill.download_dict_template import download_dict_template
 from controllers.model_config.model_config_api import model_config_api
 from controllers.query.query_by_datacards_agg import query_by_datacards_agg
 from controllers.query.query_by_datacards_agg_plugin import query_by_datacards_agg_plugin
@@ -51,6 +52,7 @@ def init_app(app):
     # 多数据源对接模块
     app.register_blueprint(extract_schema_from_db, url_prefix='/console/api')
     app.register_blueprint(extract_field_data_excel, url_prefix='/console/api')
+    app.register_blueprint(download_dict_template, url_prefix='/console/api')
     app.register_blueprint(datasource_tool_bp, url_prefix='/console/api')
     app.register_blueprint(datacard_tool_bp, url_prefix='/console/api')
     app.register_blueprint(query_by_datacards_agg, url_prefix='/console/api')

@@ -8,8 +8,10 @@
 import json
 import math
 
+
 def _is_nan(x):
     return isinstance(x, float) and math.isnan(x)
+
 
 def _norm_key(k):
     """把键标准化：去首尾空格并大写；None/NaN -> None"""
@@ -17,11 +19,13 @@ def _norm_key(k):
         return None
     return str(k).strip().upper()
 
+
 def _clean_val(v):
     """清洗值：字符串去首尾空格，其它类型原样返回"""
     if v is None or _is_nan(v):
         return None
     return v.strip() if isinstance(v, str) else v
+
 
 # 获取被更新过的目标数据表
 def get_common_tables(result: dict, excel_filed_data: list) -> list:
@@ -30,6 +34,7 @@ def get_common_tables(result: dict, excel_filed_data: list) -> list:
     - 匹配规则：忽略大小写、去除首尾空格
     - 返回: target_tables 列表（同时存在的表对象）
     """
+
     def norm_name(x):
         if not x or not isinstance(x, str):
             return None
@@ -51,6 +56,7 @@ def get_common_tables(result: dict, excel_filed_data: list) -> list:
 
     return target_tables
 
+
 def fill_field_comments_from_excel(db_schemas_json_data: dict, excel_filed_data: list) -> dict:
     """
     参数:
@@ -71,9 +77,10 @@ def fill_field_comments_from_excel(db_schemas_json_data: dict, excel_filed_data:
 
     result = copy.deepcopy(db_schemas_json_data)
 
-    # 容错：空列表直接返回拷贝
+    # 容错：空列表直接返回与“非空”分支一致的空匹配结果（结构保持为 {'tables': [...], 'views': [...]}）
+    # 避免上层误把数据库原有所有表当作“待更新项”
     if not excel_filed_data:
-        return result
+        return {"tables": [], "views": []}
 
     # 统一把 excel_filed_data 的每个条目预处理成 {norm_key: cleaned_val} 的查找表
     preprocessed = []
@@ -130,7 +137,7 @@ def fill_field_comments_from_excel(db_schemas_json_data: dict, excel_filed_data:
                     continue
                 if col_name_norm in item["lookup"]:
                     col["comment"] = item["lookup"][col_name_norm]
-    
+
     # 处理 views（与 tables 相同的逻辑）
     for view in result.get("views", []) or []:
         schema_tname_norm = _norm_key(view.get("table_name"))
@@ -155,14 +162,14 @@ def fill_field_comments_from_excel(db_schemas_json_data: dict, excel_filed_data:
                     continue
                 if col_name_norm in item["lookup"]:
                     col["comment"] = item["lookup"][col_name_norm]
-    
+
     # 获取匹配的表和视图
     target_tables = get_common_tables(result, excel_filed_data)
     # 同时获取匹配的视图（需要构造一个包含views的临时字典）
     views_result = {"tables": result.get("views", [])} if result.get("views") else {"tables": []}
     target_views = get_common_tables(views_result, excel_filed_data)
     rs_tables_dict = {'tables': target_tables, 'views': target_views}
-    
+
     print(f"[FILL] 匹配到的表和视图: 表数量={len(target_tables)}, 视图数量={len(target_views)}")
     if target_tables:
         print(f"[FILL] 匹配到的表: {[t.get('table_name') for t in target_tables if t.get('table_name')]}")

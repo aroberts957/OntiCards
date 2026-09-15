@@ -25,6 +25,7 @@ from core.connect_info_encryptor import get_connect_info_hash, decrypt_connect_i
 from extensions.ext_database import db
 from models.user_datasource_schema import UserDatasourceSchema
 from models.datacards_datasource import DataCardDataSource
+from models.datasource_infos import DatasourceInfo
 
 '''
     file_path：excel表格文件路径
@@ -504,6 +505,9 @@ def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, c
                     "filled_table_description": ((enriched_by_name.get(record.table_name) or {}).get("description"))
                 }
 
+            # 只在 LLM 实际参与了字段注释填充时才标记为 True；
+            # Excel 字典批量回填不视为 AI 填充，不应触发此标记
+            is_filled_by_llm = llm_filled_count > 0
             had_missing_before = bool(before_entry)
             per_table_payload = {
                 "table_name": record.table_name,
@@ -512,7 +516,7 @@ def update_schema_text(fill_rs_dict: dict, rs_table_names: list, user_id: str, c
                 "detailed_fill": detailed_fill
             }
 
-            record.is_filled = had_missing_before
+            record.is_filled = is_filled_by_llm
             record.filled_data = (json.dumps(per_table_payload, ensure_ascii=False) if had_missing_before else None)
 
         db.session.commit()
@@ -568,13 +572,25 @@ class ExtractFieldDataFromExcel(Resource):
         except json.JSONDecodeError:
             return {"error": "field_data 不是合法 JSON"}, 400
 
-        # 从表单接收其他字段
+        # 从表单接收参数
+        datasource_id = request.form.get("datasource_id")
         connect_info = request.form.get("connect_info")
         sheet_name = request.form.get("sheet_name")
 
-        # 检查必填字段
-        if not connect_info:
-            return {"error": "缺少必填字段: connect_info"}, 400
+        # ── 优先用 datasource_id 解析出真实的 connect_info ──
+        # 解决前端脱敏 connect_info 无法匹配 hash 的问题
+        if datasource_id:
+            ds_record = db.session.get(DatasourceInfo, datasource_id)
+            if not ds_record:
+                return {"error": f"datasource_id={datasource_id} 未找到对应的数据源"}, 400
+            if ds_record.user_id != flask_login.current_user.id:
+                return {"error": "无权访问该数据源"}, 403
+            # 用解密后的真实连接信息，覆盖前端传入的脱敏值
+            connect_info = ds_record.connect_info_decrypted
+            print(
+                f"[datasource_id] 命中数据源 {ds_record.id}，connect_name={ds_record.connect_name}，使用解密后的 connect_info")
+        elif not connect_info:
+            return {"error": "缺少必填字段: datasource_id 或 connect_info（二选一）"}, 400
 
         # 3、文件保存
         # 1) 原始文件名（可能是中文）
@@ -720,6 +736,29 @@ class ExtractFieldDataFromExcel(Resource):
                 print(f"已找到表名: {table_name} 对应的记录 ID: {record.id}")
                 ids.append(str(record.id))
 
+        # ★ 容错：当 Excel 与工作空间无任何匹配表时，跳过数据库写入与卡片删除/重建，
+        # 避免后续 batch_delete_by_uuids([]) 等空集合调用触发异常
+        if not ids:
+            print("[INFO] Excel 中无匹配数据库表（或匹配表无对应记录），跳过卡片删除与重建流程")
+            return {
+                "code": 200,
+                "msg": "success",
+                "data": {
+                    "summary": {
+                        "total_tables_in_excel": len(excel_table_names),
+                        "matched_tables": len(matched_tables),
+                        "unmatched_tables": len(unmatched_tables_detail),
+                        "total_fields_updated": 0,
+                        "total_fields_from_excel": 0,
+                        "total_fields_from_llm": 0,
+                        "datacards_deleted": 0,
+                        "datacards_generated": 0
+                    },
+                    "table_details": [],
+                    "unmatched_tables_detail": unmatched_tables_detail
+                }
+            }, 200
+
         update_rs = update_schema_text(fill_rs, rs_table_names, flask_login.current_user.id, connect_info,
                                        original_schema_dict)
         print("更新数据库结果:", update_rs)
@@ -738,11 +777,16 @@ class ExtractFieldDataFromExcel(Resource):
         # 删除数据卡片库中已生成的卡片和向量库中的数据
         delete_db_rs = delete_records_by_ids(ids)
         print("删除数据卡片库中已生成的卡片结果:", delete_db_rs)
-        delete_w_rs = batch_delete_by_uuids(w_uuids, class_name=flask_login.current_user.weaviate_class_name)
-        print("删除向量库中的数据结果:", delete_w_rs)
+        # ★ 防御：当数据卡片库中尚未生成过 w_uuid（例如首次上传字典）时，跳过向量库删除，
+        # 避免 batch_delete_by_uuids([]) 抛 ValueError
+        if w_uuids:
+            delete_w_rs = batch_delete_by_uuids(w_uuids, class_name=flask_login.current_user.weaviate_class_name)
+            print("删除向量库中的数据结果:", delete_w_rs)
+        else:
+            print("[INFO] 无 w_uuid 可删，跳过向量库删除")
 
         # 回查 connect_name 和 datasource_id（同一 connect_info 下应一致）
-        from models.datasource_infos import DatasourceInfo
+        # DatasourceInfo 已在文件顶部导入，此处不再重复 import
         # 重要：DatasourceInfo.connect_info 已加密存储，必须用 connect_info_hash 稳定哈希匹配
         _ds_ci_hash = get_connect_info_hash(connect_info) if connect_info else ''
         datasource = (

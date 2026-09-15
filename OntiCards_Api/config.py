@@ -7,19 +7,19 @@ dotenv.load_dotenv()
 
 DEFAULTS = {
     # 数据库配置
-    'DB_USERNAME': 'postgres',
+    'DB_USERNAME': '',
     'DB_PASSWORD': '',
-    'DB_HOST': 'localhost',
-    'DB_PORT': '5432',
+    'DB_HOST': '',
+    'DB_PORT': '',
     'DB_DATABASE': '',
     'DB_CHARSET': '',
-    
+
     # Redis 配置
-    'REDIS_HOST': 'localhost',
-    'REDIS_PORT': '6379',
+    'REDIS_HOST': '',
+    'REDIS_PORT': '',
     'REDIS_DB': '0',
     'REDIS_USE_SSL': 'False',
-    
+
     # URL 前缀配置
     'OAUTH_REDIRECT_PATH': '/console/api/oauth/authorize',
     'OAUTH_REDIRECT_INDEX_PATH': '/',
@@ -29,33 +29,33 @@ DEFAULTS = {
     'APP_WEB_URL': '',
     'APP_API_URL': '',
     'FILES_URL': '',
-    
+
     # 文件存储配置
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
-    
+
     # 环境配置
     'DEPLOY_ENV': 'PRODUCTION',
-    
+
     # SQLAlchemy 配置
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
     'SQLALCHEMY_ECHO': 'False',
-    
+
     # Sentry 配置
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
-    
+
     # Weaviate 配置
     'WEAVIATE_GRPC_ENABLED': 'True',
     'WEAVIATE_BATCH_SIZE': 100,
-    
+
     # Qdrant 配置
     'QDRANT_CLIENT_TIMEOUT': 20,
-    
+
     # 日志配置
     'LOG_LEVEL': 'INFO',
-    
+
     # OpenAI/Claude API 配置
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_ENABLED': 'False',
@@ -65,15 +65,15 @@ DEFAULTS = {
     'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
     'HOSTED_ANTHROPIC_ENABLED': 'False',
     'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
-    
+
     # 用户邀请配置
     'INVITE_EXPIRY_HOURS': 72,
-    
+
     # 文件上传配置
     'UPLOAD_FILE_SIZE_LIMIT': 15,
     'UPLOAD_FILE_BATCH_LIMIT': 5,
     'UPLOAD_IMAGE_FILE_SIZE_LIMIT': 10,
-    
+
     # 向量搜索配置（数据卡片智能召回 + 重排序优化）
     'VECTOR_SEARCH_DISTANCE_THRESHOLD': '0.65',
     'VECTOR_SEARCH_QUERY_LIMIT': '80',
@@ -87,6 +87,10 @@ DEFAULTS = {
     'LIBREOFFICE_SERVICE_URL': 'http://localhost:3000',
     'LIBREOFFICE_SERVICE_TIMEOUT': '120',
     'LIBREOFFICE_SERVICE_ENABLED': 'true',
+
+    # 字典文件模板（数据库字段注释回填用）路径配置
+    # 本地开发默认值；部署到服务器后，在 .env 中覆盖为服务器绝对路径即可，也可使用项目内的相对路径(因为已有模板文件)
+    'FIELDFILL_DICT_TEMPLATE_PATH': 'controllers/datasource/filedfill/dict_template.xlsx',
 }
 
 
