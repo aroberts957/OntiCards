@@ -1,7 +1,7 @@
 import type { Resource } from 'i18next'
 
 export function getNamespaces() {
-  return ['common', 'home', 'chat']
+  return ['common']
 }
 const i18nConfig = {
   defaultLocale: 'zh-CN',
