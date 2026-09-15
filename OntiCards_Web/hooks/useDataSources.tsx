@@ -79,15 +79,22 @@ export const notifyChangelogChanged = () => {
 let globalCacheMeta: CacheMeta | null = null;
 
 // 从 sessionStorage 恢复全局缓存
+// 注意：必须严格校验 data 是数组，防止损坏缓存把 undefined 流入 state 导致 .reduce 等调用崩溃
 const loadGlobalCache = (): CacheMeta | null => {
   if (typeof window === 'undefined') return null;
   try {
     const cached = window.sessionStorage.getItem(GLOBAL_CACHE_KEY);
     if (cached) {
-      const parsed = JSON.parse(cached) as CacheMeta;
+      const parsed = JSON.parse(cached) as Partial<CacheMeta> | null;
+      if (!parsed || typeof parsed.timestamp !== 'number') return null;
       // 检查缓存是否过期
       if (Date.now() - parsed.timestamp < CACHE_EXPIRY_MS) {
-        return parsed;
+        return {
+          data: Array.isArray(parsed.data) ? parsed.data : [],
+          weaviateCount: typeof parsed.weaviateCount === 'number' ? parsed.weaviateCount : 0,
+          timestamp: parsed.timestamp,
+          userId: typeof parsed.userId === 'string' ? parsed.userId : null,
+        };
       }
     }
   } catch {
@@ -134,12 +141,12 @@ export const DataSourceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (!globalCacheMeta) {
         const cached = loadGlobalCache();
         if (cached) {
-          // 兼容旧版本缓存（可能没有 userId 字段）
+          // loadGlobalCache 已经对 data / weaviateCount 做了兜底，可以安全直接使用
           globalCacheMeta = {
             data: cached.data,
             weaviateCount: cached.weaviateCount,
             timestamp: cached.timestamp,
-            userId: (cached as any).userId ?? null,
+            userId: cached.userId,
           };
         }
       }
@@ -176,8 +183,14 @@ export const DataSourceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (hasValidCache) {
         // 使用当前用户的有效缓存
-        setDataSources(globalCacheMeta.data);
-        setWeaviateCount(globalCacheMeta.weaviateCount);
+        // 再次兜底：防止缓存对象被外部修改导致 data 变成非数组
+        const safeItems = Array.isArray(globalCacheMeta.data) ? globalCacheMeta.data : [];
+        setDataSources(safeItems);
+        setWeaviateCount(
+          typeof globalCacheMeta.weaviateCount === 'number'
+            ? globalCacheMeta.weaviateCount
+            : 0
+        );
         setLastUpdated(globalCacheMeta.timestamp);
         return;
       }
@@ -186,7 +199,7 @@ export const DataSourceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         const res = await getUserDataSources({ user_id: userId, page_size: 100 });
         if (res.code === 200 && res.data?.items) {
-          const items = res.data.items;
+          const items = Array.isArray(res.data.items) ? res.data.items : [];
           const nextWeaviateCount = res.data.weaviate_count || 0;
           setDataSources(items);
           setWeaviateCount(nextWeaviateCount);
@@ -209,6 +222,10 @@ export const DataSourceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       } catch (e) {
         console.error('获取数据源失败', e);
+        // 兜底：网络/解析异常时也清空数据，避免留下污染的 state
+        setDataSources([]);
+        setWeaviateCount(0);
+        setLastUpdated(now);
       }
     } finally {
       setLoading(false);
@@ -233,11 +250,12 @@ export const DataSourceProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // 尝试从 sessionStorage 恢复缓存
     const cached = loadGlobalCache();
     if (cached) {
+      // loadGlobalCache 已经对 data / weaviateCount 做了类型校验与兜底
       setDataSources(cached.data);
-      setWeaviateCount(cached.weaviateCount || 0);
+      setWeaviateCount(cached.weaviateCount);
       setLastUpdated(cached.timestamp);
     }
-    
+
     // 标记首次获取完成（但不立即触发 API 调用）
     isInitialFetchDone.current = true;
   }, []);

@@ -85,10 +85,14 @@ const WorkspacesPage = () => {
     fetchDataSources();
   }, [fetchDataSources]);
 
+  // 防御性兜底：确保 dataSources 始终是数组
+  // 即便上游 hook 因为缓存损坏/竞态等原因传入 undefined，页面也能稳定渲染
+  const safeDataSources: DataSourceItem[] = Array.isArray(dataSources) ? dataSources : [];
+
   // 从 dataSources 派生统计数据
-  const totalTables = dataSources.reduce((acc, ws) => acc + (ws.table_num || 0), 0);
-  const totalCards = dataSources.reduce((acc, ws) => acc + (ws.datacard_count || 0), 0);
-  const workspaces = dataSources;
+  const totalTables = safeDataSources.reduce((acc, ws) => acc + (ws.table_num || 0), 0);
+  const totalCards = safeDataSources.reduce((acc, ws) => acc + (ws.datacard_count || 0), 0);
+  const workspaces = safeDataSources;
 
   // 点击外部关闭操作菜单
   useEffect(() => {
@@ -455,12 +459,12 @@ const WorkspacesPage = () => {
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5 relative z-20">
             <h3 className="text-sm font-semibold text-slate-900">全部工作空间</h3>
-              <div className="group relative inline-flex">
-                <Info className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <div className="absolute left-0 top-full mt-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-xs rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-30 whitespace-nowrap">
-                  当前支持数据源：PostgreSQL、MySQL、Oracle、SQL Server、Trino、SQLite、电科金仓(原人大金仓)KingBase、OceanBase(MySQL模式)、DMBase(达梦)
-                </div>
+            <div className="group relative inline-flex">
+              <Info className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <div className="absolute left-0 top-full mt-1.5 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-xs rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-30 whitespace-nowrap">
+                当前支持数据源：PostgreSQL、MySQL、Oracle、SQL Server、Trino、SQLite、电科金仓(原人大金仓)KingBase、OceanBase(MySQL模式)、DMBase(达梦)
               </div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
