@@ -1,6 +1,7 @@
 // 数据连接器相关接口定义和封装
 
-import { request } from './base'
+import { message } from 'antd/lib'
+import { request, urlPrefix } from './base'
 
 // ===== 类型定义 =====
 
@@ -17,23 +18,23 @@ export interface DataSourceConfig {
   port?: number
   database?: string
   schema?: string
-  
+
   // Trino 特有字段
   catalog?: string
-  
+
   // Oracle 特有字段
   service_name?: string
   sid?: string
   oracle_mode_sysdba?: boolean
   target_schema?: string  // Oracle 的 Schema（不填则默认使用用户名）
-  
+
   // SQL Server 特有字段
   dsn?: string
-  
+
   // SQLite 特有字段
   sqlite_path?: string
   sqlite_memory?: boolean
-  
+
   // 抽取特定表相关字段
   table_names?: string[]  // 要抽取的表名列表
 }
@@ -362,19 +363,19 @@ export const listTables = async (config: DataSourceConfig): Promise<ApiResponse<
   try {
     // 构建请求参数
     const requestBody: any = { ...config }
-    
+
     // 只有Oracle数据库且勾选了SYSDBA模式时才携带oracle_mode_sysdba字段
     if (config.dbType === 'oracle' && config.oracle_mode_sysdba === true) {
       requestBody.oracle_mode_sysdba = true
     } else {
       delete requestBody.oracle_mode_sysdba
     }
-    
+
     // Trino的port需要转换为字符串
     if (config.dbType === 'trino' && config.port !== undefined) {
       requestBody.port = String(config.port)
     }
-    
+
     // DM 的 target_schema 字段（仅 DM 且填写了才传递，不填则默认传用户名大写）
     if (config.dbType === 'dm') {
       // 如果填写了 target_schema，使用填写的值
@@ -387,14 +388,14 @@ export const listTables = async (config: DataSourceConfig): Promise<ApiResponse<
     } else {
       delete requestBody.target_schema
     }
-    
+
     // Oracle 的 target_schema 字段
     if (config.dbType === 'oracle' && config.target_schema?.trim()) {
       requestBody.target_schema = config.target_schema.trim()
     } else if (config.dbType !== 'dm') {
       delete requestBody.target_schema
     }
-    
+
     const response = await request<ApiResponse<TableListResponse>>('/list_tables', {
       method: 'POST',
       headers: {
@@ -423,7 +424,7 @@ export const testConnection = async (config: DataSourceConfig): Promise<ApiRespo
   try {
     // 构建请求参数，处理Oracle SYSDBA模式和Trino的port字段
     const requestBody: any = { ...config }
-    
+
     // 只有Oracle数据库且勾选了SYSDBA模式时才携带oracle_mode_sysdba字段
     if (config.dbType === 'oracle' && config.oracle_mode_sysdba === true) {
       requestBody.oracle_mode_sysdba = true
@@ -431,12 +432,12 @@ export const testConnection = async (config: DataSourceConfig): Promise<ApiRespo
       // 确保不携带oracle_mode_sysdba字段
       delete requestBody.oracle_mode_sysdba
     }
-    
+
     // Trino的port需要转换为字符串
     if (config.dbType === 'trino' && config.port !== undefined) {
       requestBody.port = String(config.port)
     }
-    
+
     // DM 的 target_schema 字段（仅 DM 且填写了才传递，不填则默认传用户名大写）
     if (config.dbType === 'dm') {
       // 如果填写了 target_schema，使用填写的值
@@ -449,14 +450,14 @@ export const testConnection = async (config: DataSourceConfig): Promise<ApiRespo
     } else {
       delete requestBody.target_schema
     }
-    
+
     // Oracle 的 target_schema 字段（仅 Oracle 且填写了才传递）
     if (config.dbType === 'oracle' && config.target_schema?.trim()) {
       requestBody.target_schema = config.target_schema.trim()
     } else if (config.dbType !== 'dm') {
       delete requestBody.target_schema
     }
-    
+
     const response = await request<ApiResponse<ConnectionTestResult>>('/connect_test', {
       method: 'POST',
       headers: {
@@ -484,19 +485,19 @@ export const testConnection = async (config: DataSourceConfig): Promise<ApiRespo
  * @returns 提取结果
  */
 export const extractSchema = async (
-  config: DataSourceConfig, 
+  config: DataSourceConfig,
   getAbortController?: (abortController: AbortController) => void
 ): Promise<ApiResponse<ExtractSchemaResult>> => {
   // 生成唯一的请求ID，用于后端识别和清理
   const requestId = `extract_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  
+
   try {
     // 构建请求参数，处理Oracle SYSDBA模式和Trino的port字段
-    const requestBody: any = { 
+    const requestBody: any = {
       ...config,
       request_id: requestId  // 添加请求ID
     }
-    
+
     // 只有Oracle数据库且勾选了SYSDBA模式时才携带oracle_mode_sysdba字段
     if (config.dbType === 'oracle' && config.oracle_mode_sysdba === true) {
       requestBody.oracle_mode_sysdba = true
@@ -504,12 +505,12 @@ export const extractSchema = async (
       // 确保不携带oracle_mode_sysdba字段
       delete requestBody.oracle_mode_sysdba
     }
-    
+
     // Trino的port需要转换为字符串
     if (config.dbType === 'trino' && config.port !== undefined) {
       requestBody.port = String(config.port)
     }
-    
+
     // DM 的 target_schema 字段（仅 DM 且填写了才传递，不填则默认传用户名大写）
     if (config.dbType === 'dm') {
       // 如果填写了 target_schema，使用填写的值
@@ -522,21 +523,21 @@ export const extractSchema = async (
     } else {
       delete requestBody.target_schema
     }
-    
+
     // Oracle 的 target_schema 字段（仅 Oracle 且填写了才传递）
     if (config.dbType === 'oracle' && config.target_schema?.trim()) {
       requestBody.target_schema = config.target_schema.trim()
     } else if (config.dbType !== 'dm') {
       delete requestBody.target_schema
     }
-    
+
     // 只有当选择了特定表时才添加table_names参数
     if (config.table_names && config.table_names.length > 0) {
       requestBody.table_names = config.table_names
     } else {
       delete requestBody.table_names
     }
-    
+
     const response = await request<ApiResponse<ExtractSchemaResult>>('/extract_schema', {
       method: 'POST',
       headers: {
@@ -551,12 +552,12 @@ export const extractSchema = async (
     // 如果是用户主动取消请求，通知后端清理
     if (error?.name === 'AbortError') {
       console.log('请求已被取消，通知后端清理数据')
-      
+
       // 异步调用后端清理接口，传递完整配置用于构建连接字符串
       cancelExtractSchema(requestId, config).catch(err => {
         console.error('清理请求失败:', err)
       })
-      
+
       return {
         code: 499,
         msg: '请求已取消',
@@ -629,18 +630,18 @@ export const getDataSources = async (): Promise<ApiResponse<any[]>> => {
 export const getUserDataSources = async (params: PaginationParams = {}): Promise<ApiResponse<PaginatedResponse<DataSourceItem>>> => {
   try {
     const { page = 1, page_size = 8, user_id } = params
-    
+
     // 构建查询参数
     const queryParams = new URLSearchParams({
       page: page.toString(),
       page_size: page_size.toString()
     })
-    
+
     // 如果提供了user_id，添加到查询参数中
     if (user_id) {
       queryParams.append('user_id', user_id)
     }
-    
+
     const response = await request<ApiResponse<PaginatedResponse<DataSourceItem>>>(`/datasource_tool?${queryParams.toString()}`, {
       method: 'GET',
     })
@@ -790,6 +791,7 @@ export interface ExcelUploadParams {
   connect_info: string
   sheet_name?: string
   field_data: ExcelFieldMapping
+  datasource_id: string  // 数据源ID
 }
 
 export interface ExcelFieldData {
@@ -812,6 +814,7 @@ export const uploadExcelFieldData = async (params: ExcelUploadParams): Promise<A
     const formData = new FormData()
     formData.append('file', params.file)
     formData.append('connect_info', params.connect_info)
+    formData.append('datasource_id', params.datasource_id)
     if (params.sheet_name) {
       formData.append('sheet_name', params.sheet_name)
     }
@@ -833,5 +836,103 @@ export const uploadExcelFieldData = async (params: ExcelUploadParams): Promise<A
       msg: 'Excel文件上传失败',
       result: null
     }
+  }
+}
+
+/**
+ * 下载字典文件模板
+ * @param fileName 下载的文件名（不含扩展名）
+ * @returns 成功返回 true，失败返回 false
+ */
+export const downloadDictTemplate = async (fileName: string = 'dict_template'): Promise<boolean> => {
+  try {
+    const accessToken = localStorage.getItem('console_token') || ''
+
+    // 构建完整的请求 URL
+    const url = `${urlPrefix}/filedfill/dict_template/download`
+
+    // 发起 fetch 请求，设置 responseType 为 blob 以处理二进制数据
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': accessToken,
+      },
+      credentials: 'include', // 确保发送 cookies
+    })
+
+    // 检查响应状态
+    if (!response.ok) {
+      // 处理 401 未登录情况
+      if (response.status === 401) {
+        message.warning('请先登录')
+        return false
+      }
+
+      // 尝试解析错误响应（JSON 格式）
+      try {
+        const errorData = await response.json()
+        message.error(errorData.msg || '字典模板文件不存在')
+      } catch {
+        // 如果不是 JSON 格式，显示通用错误
+        message.error('字典模板文件不存在或读取失败')
+      }
+      return false
+    }
+
+    // 获取响应内容类型
+    const contentType = response.headers.get('Content-Type') || ''
+
+    // 检查是否是 Excel 文件
+    const isExcel = contentType.includes('application/vnd.openxmlformats-officedocument') ||
+      contentType.includes('application/vnd.ms-excel') ||
+      contentType.includes('application/octet-stream')
+
+    if (!isExcel && !response.headers.get('Content-Disposition')) {
+      // 尝试解析 JSON 错误响应（404、500等情况）
+      try {
+        const errorData = await response.clone().json()
+        if (errorData.code) {
+          message.error(errorData.msg || '读取字典模板失败')
+          return false
+        }
+      } catch {
+        // 不是 JSON 格式，继续作为二进制文件处理
+      }
+    }
+
+    // 获取二进制数据
+    const blob = await response.blob()
+
+    // 检查 blob 是否为空
+    if (blob.size === 0) {
+      message.error('字典模板文件为空')
+      return false
+    }
+
+    // 创建下载链接
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = `${fileName}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+
+    // 清理
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(downloadUrl)
+
+    return true
+  } catch (error: any) {
+    console.error('下载字典模板失败:', error)
+
+    // 解析错误信息
+    const errorMessage = error?.msg || error?.message || '下载字典模板失败'
+
+    // 避免显示未登录时的通用错误提示
+    if (!errorMessage.includes('登录') && !errorMessage.includes('unauthorized')) {
+      message.error(errorMessage)
+    }
+
+    return false
   }
 }

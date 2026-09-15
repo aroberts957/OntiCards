@@ -1,102 +1,70 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
-import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import type { DataCard, DataCardData, DataSource } from '@/api/datacard'
+import { getDataCards, updateDataCard } from '@/api/datacard'
+import type { DataSourceItem, SchemaItem } from '@/api/datasource'
+import { downloadDictTemplate, getUserDataSources, updateDataSourceName, uploadExcelFieldData } from '@/api/datasource'
 import {
-  message,
-  Modal,
-  Select,
-  Spin,
-  Button,
-  Empty,
-  Tabs,
-  Card,
-  Tooltip,
-  Checkbox,
-  Progress,
-  Input,
-  Popconfirm,
-  Switch,
-} from 'antd'
-import type { UploadFile } from 'antd/es/upload/interface'
-import type { ColumnsType } from 'antd/es/table'
+  deleteRelationships,
+  getRelationshipCards,
+  getRelationshipGraph,
+  getTableRelationships,
+  type GlobalInventory,
+  type GraphEdge,
+  type GraphNode,
+  type RelationshipCardItem,
+} from '@/api/globalInventory'
+import { queryByDatacardsAgg, type QueryRequest } from '@/api/query'
+import QueryHistoryPage from '@/app/[lng]/(newLayout)/query-history/QueryHistoryPage'
+import TargetInventory from '@/app/[lng]/(newLayout)/target-inventory/TargetInventory'
+import GlobalInventoryModal from '@/components/business/GlobalInventoryModal'
+import InventoryTypeModal, { type InventoryType } from '@/components/business/InventoryTypeModal'
+import KnowledgeTab from '@/components/business/KnowledgeTab'
+import TargetInventoryModal from '@/components/business/TargetInventoryModal'
+import WorkspaceGlobalInventoryTabs from '@/components/business/WorkspaceGlobalInventoryTabs'
+import { useDataSources } from '@/hooks/useDataSources'
+import { message } from 'antd'
 import {
-  Database,
-  Table,
-  CreditCard,
-  Sparkles,
-  MessageSquare,
-  PlayCircle,
-  CheckCircle,
   AlertCircle,
+  AlertTriangle,
+  Aperture,
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   Clock,
-  BarChart3,
-  Layers,
-  FileText,
-  Settings,
-  Loader2,
-  RefreshCw,
-  X,
-  Tag,
-  Link2,
-  Key,
-  Upload,
-  FileSpreadsheet,
-  ArrowRight,
-  Table2,
+  CreditCard,
+  Database,
+  Download,
   FileCheck,
+  FileText,
   FileX,
-  Eye,
-  EyeOff,
-  AlertTriangle,
-  Zap,
-  Copy,
-  Code,
-  Search,
-  Info,
-  CheckCircle2,
-  Target,
-  Globe,
-  Aperture,
-  BookOpen,
+  Key,
+  Layers,
   LayoutDashboard,
+  Link2,
+  Loader2,
+  MessageSquare,
+  PlayCircle,
+  RefreshCw,
+  Search,
+  Settings,
+  Sparkles,
+  Table,
+  Table2,
+  Tag,
+  Upload,
+  X,
+  Zap,
 } from 'lucide-react'
-import {
-  PlusOutlined,
-  DeleteOutlined,
-  BookOutlined,
-} from '@ant-design/icons'
-import { getUserDataSources, updateDataSourceName, uploadExcelFieldData } from '@/api/datasource'
-import type { DataSourceItem, SchemaItem } from '@/api/datasource'
-import { getDataCards, getAllDataCards, updateDataCard } from '@/api/datacard'
-import type { DataCard, DataCardData, DataSource } from '@/api/datacard'
-import { queryByDatacardsAgg, type QueryRequest } from '@/api/query'
-import { runGlobalInventory, getTableList, type TableListItem, type RunJobRequest } from '@/api/targetInventory'
-import {
-  discoverRelationships,
-  getRelationshipCards,
-  getTableRelationships,
-  getRelationshipGraph,
-  deleteRelationships,
-  type RelationshipCardItem,
-  type GlobalInventory,
-  type GraphNode,
-  type GraphEdge,
-} from '@/api/globalInventory'
+import Link from 'next/link'
+import { useParams, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import TargetInventory from '@/app/[lng]/(newLayout)/target-inventory/TargetInventory'
-import InventoryTypeModal, { type InventoryType } from '@/components/business/InventoryTypeModal'
-import TargetInventoryModal from '@/components/business/TargetInventoryModal'
-import GlobalInventoryModal from '@/components/business/GlobalInventoryModal'
-import WorkspaceGlobalInventoryTabs from '@/components/business/WorkspaceGlobalInventoryTabs'
-import KnowledgeTab from '@/components/business/KnowledgeTab'
-import { useDataSources } from '@/hooks/useDataSources'
-import QueryHistoryPage from '@/app/[lng]/(newLayout)/query-history/QueryHistoryPage'
 
 // 全局统一的数据源缓存 key
 const GLOBAL_DATA_SOURCE_CACHE_KEY = 'globalDataSources'
@@ -400,7 +368,7 @@ function SchemaDetailModal({
               className="flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold"
               style={{ color: schema.is_filled ? 'rgb(var(--theme-primary))' : 'rgb(var(--theme-text-muted))' }}
             >
-              {schema.is_filled ? '✨ 部分数据AI填充' : '未填充'}
+              {schema.is_filled ? '✨ 部分数据AI填充' : 'AI未填充'}
             </span>
             {schemaText?.description && (
               <>
@@ -1296,13 +1264,14 @@ const WorkspaceDetailPage = () => {
   const [enhanceFile, setEnhanceFile] = useState<File | null>(null)
   const [enhanceSheetName, setEnhanceSheetName] = useState('')
   const [enhanceIsUploading, setEnhanceIsUploading] = useState(false)
+  const [enhanceIsDownloadingTemplate, setEnhanceIsDownloadingTemplate] = useState(false)
   const [enhanceFieldMapping, setEnhanceFieldMapping] = useState({
     has_title: '1' as '0' | '1',
     tb_name_index: 'A',
     tb_desc_index: 'B',
-    field_name_index: 'B',
-    field_desc_index: 'E',
-    field_value_desc_index: 'F',
+    field_name_index: 'C',
+    field_desc_index: 'D',
+    field_value_desc_index: 'E',
   })
   const [enhanceResult, setEnhanceResult] = useState<any>(null)
   const [enhanceDragOver, setEnhanceDragOver] = useState(false)
@@ -2786,7 +2755,7 @@ const WorkspaceDetailPage = () => {
                               className={`inline-flex items-center px-2.5 py-1 text-xs font-medium ${s.is_filled ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500'}`}
                               style={{ borderRadius: '9999px' }}
                             >
-                              {s.is_filled ? '部分数据AI填充' : '未填充'}
+                              {s.is_filled ? '部分数据AI填充' : 'AI未填充'}
                             </span>
                             </div>
                           </td>
@@ -3312,9 +3281,57 @@ const WorkspaceDetailPage = () => {
                     <div className="space-y-4">
                       {/* 文件上传 */}
                       <div>
-                        <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                          上传 Excel 字典文件 <span style={{ color: '#e11d48' }}>*</span>
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-xs font-medium text-slate-600">
+                            上传 Excel 字典文件 <span style={{ color: '#e11d48' }}>*</span>
+                          </label>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (enhanceIsDownloadingTemplate) return
+                              setEnhanceIsDownloadingTemplate(true)
+                              try {
+                                const ok = await downloadDictTemplate('dict_template')
+                                if (ok) {
+                                  message.success('字典模板下载成功')
+                                }
+                              } catch (error) {
+                                console.error('下载字典模板出错:', error)
+                                message.error('下载字典模板失败，请重试')
+                              } finally {
+                                setEnhanceIsDownloadingTemplate(false)
+                              }
+                            }}
+                            disabled={enhanceIsDownloadingTemplate}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0.125rem 0.5rem',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              color: enhanceIsDownloadingTemplate ? '#94a3b8' : '#2563eb',
+                              backgroundColor: 'rgba(219, 234, 254, 0.6)',
+                              border: 'none',
+                              borderRadius: '8px',
+                              cursor: enhanceIsDownloadingTemplate ? 'not-allowed' : 'pointer',
+                              transition: 'all 0.15s ease',
+                            }}
+                            className={enhanceIsDownloadingTemplate ? '' : 'hover:bg-blue-100'}
+                          >
+                            {enhanceIsDownloadingTemplate ? (
+                              <>
+                                <Loader2 className="w-6 h-6 animate-spin" />
+                                下载中...
+                              </>
+                            ) : (
+                              <>
+                                <Download className="w-6 h-6" />
+                                下载字典模板
+                              </>
+                            )}
+                          </button>
+                        </div>
                         <div
                           style={{
                             borderRadius: '16px',
@@ -3565,7 +3582,7 @@ const WorkspaceDetailPage = () => {
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-xs text-slate-500 whitespace-nowrap">字段列</label>
+                              <label className="text-xs text-slate-500 whitespace-nowrap">字段名列</label>
                               <input
                                 type="text"
                                 value={enhanceFieldMapping.field_name_index}
@@ -3593,7 +3610,7 @@ const WorkspaceDetailPage = () => {
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-xs text-slate-500 whitespace-nowrap">描述列</label>
+                              <label className="text-xs text-slate-500 whitespace-nowrap">字段描述列</label>
                               <input
                                 type="text"
                                 value={enhanceFieldMapping.field_desc_index}
@@ -3621,7 +3638,7 @@ const WorkspaceDetailPage = () => {
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-xs text-slate-500 whitespace-nowrap">取值</label>
+                              <label className="text-xs text-slate-500 whitespace-nowrap">取值附加描述列</label>
                               <input
                                 type="text"
                                 value={enhanceFieldMapping.field_value_desc_index}
@@ -3671,7 +3688,7 @@ const WorkspaceDetailPage = () => {
                     <div className="flex justify-end pt-1">
                       <button
                         onClick={async () => {
-                          if (!enhanceFile || !workspace.connect_info) return
+                          if (!enhanceFile || !workspace.connect_info || !workspace.id) return
                           setEnhanceIsUploading(true)
                           try {
                             const res = await uploadExcelFieldData({
@@ -3679,6 +3696,7 @@ const WorkspaceDetailPage = () => {
                               connect_info: workspace.connect_info,
                               sheet_name: enhanceSheetName || undefined,
                               field_data: enhanceFieldMapping,
+                              datasource_id: workspace.id,
                             })
                             if (res.code === 200 && res.data) {
                               setEnhanceResult(res.data)
