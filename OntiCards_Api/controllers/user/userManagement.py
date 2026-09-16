@@ -26,6 +26,10 @@ from models.global_inventory import (
     TableRelationship,
     TableRelationshipCard
 )
+from models.governance_report import GovernanceReport
+from models.governance_rule import GovernanceRule
+from models.governance_rule_library import GovernanceRuleLibrary
+from models.governance_report_file import GovernanceReportFile
 
 user_bp = Blueprint('users', __name__)
 api = Api(user_bp)
@@ -38,14 +42,14 @@ user_info_fields = {
     'status': fields.String,
     'default_lang': fields.String,
     'user_group_name': fields.String,
-    'email':fields.String,
+    'email': fields.String,
     'role': fields.String,
     'login_at': fields.DateTime,
 }
 
 user_tetx = {
-    'id':fields.String,
-    'username':fields.Integer
+    'id': fields.String,
+    'username': fields.Integer
 }
 user_info_response_fields = {
     'code': fields.Integer,
@@ -60,7 +64,8 @@ user_list_response_fields = {
     'data': fields.List(fields.Nested(user_info_fields)),
 }
 
-#用户信息修改以及获取
+
+# 用户信息修改以及获取
 class UserAPI(Resource):
 
     @login_required
@@ -83,7 +88,7 @@ class UserAPI(Resource):
                 'avatar': user.avatar,
                 'user_group_name': user_group_name,
                 'role': user.role,
-                'email':user.email,
+                'email': user.email,
                 'login_at': str(user.last_login),
             }
         }
@@ -135,7 +140,8 @@ class UserAPI(Resource):
 
         return {'message': '用户信息更新成功', 'code': 200}
 
-#用户退出
+
+# 用户退出
 class LogoutAPI(Resource):
 
     @login_required
@@ -143,7 +149,8 @@ class LogoutAPI(Resource):
         logout_user()
         return {'message': 'Logged out successfully', 'code': 200}
 
-#登录注册
+
+# 登录注册
 class LoginAPI(Resource):
     # 登录成功
     def post(self):
@@ -215,7 +222,8 @@ class LoginAPI(Resource):
 
         return {'message': 'Registration successful', 'code': 200}
 
-#修改密码
+
+# 修改密码
 class ChangePasswordAPI(Resource):
 
     @login_required
@@ -343,7 +351,6 @@ class UploadAvatarAPI(Resource):
         if not user:
             return {'message': 'User does not exist', 'code': 404}
 
-
         # 保存新头像
         filename = file.filename
         ext = filename.rsplit('.', 1)[1].lower()
@@ -364,6 +371,7 @@ class UploadAvatarAPI(Resource):
             }
         }
 
+
 # 获取所有用户信息接口
 class AllUsersAPI(Resource):
     @login_required  # 如果不需要登录访问，可以删除这一行
@@ -382,7 +390,7 @@ class AllUsersAPI(Resource):
                 'id': str(user.id),
                 'username': user.username,
                 'nickname': user.nickname,
-                'status':user.status,
+                'status': user.status,
                 'avatar': user.avatar,
                 'default_lang': getattr(user, 'default_lang', None),
                 'user_group_name': user_group_name,
@@ -402,7 +410,7 @@ class UserManagementAPI(Resource):
     PUT: 修改用户信息
     DELETE: 删除用户
     """
-    
+
     @login_required
     def post(self):
         """
@@ -435,7 +443,7 @@ class UserManagementAPI(Resource):
         # 验证角色和状态值
         if args['role'] not in ['normal', 'admin']:
             return {'message': '角色值无效，仅支持 normal 或 admin', 'code': 400}
-        
+
         if args['status'] not in ['normal', 'disabled']:
             return {'message': '状态值无效，仅支持 normal 或 disabled', 'code': 400}
 
@@ -636,10 +644,6 @@ class UserManagementAPI(Resource):
 
             # 2.0.0 查询并统计规则库和规则数量（删除 datasource_infos 时会通过 CASCADE 自动删除）
             if user_datasource_ids:
-                from models.governance_report import GovernanceReport
-                from models.governance_rule import GovernanceRule
-                from models.governance_rule_library import GovernanceRuleLibrary
-
                 # 统计规则库数量（通过 datasource_id）
                 governance_deleted['rule_libraries'] = db.session.query(GovernanceRuleLibrary).filter(
                     GovernanceRuleLibrary.datasource_id.in_(user_datasource_ids)
@@ -655,7 +659,6 @@ class UserManagementAPI(Resource):
                 ).delete(synchronize_session=False)
 
             # 2.0.1 查询该用户的所有报告ID
-            from models.governance_report_file import GovernanceReportFile
             user_report_ids = [
                 str(r[0]) for r in db.session.query(GovernanceReport.id)
                 .filter(GovernanceReport.user_id == target_user_id)
@@ -735,9 +738,9 @@ class UserManagementAPI(Resource):
                 # 2.1.3 删除表关系（table_a 或 table_b 属于该用户的数据源）
                 deleted_relationships = db.session.query(TableRelationship) \
                     .filter(
-                        (TableRelationship.table_a_datasource_id.in_(user_datasource_ids)) |
-                        (TableRelationship.table_b_datasource_id.in_(user_datasource_ids))
-                    ) \
+                    (TableRelationship.table_a_datasource_id.in_(user_datasource_ids)) |
+                    (TableRelationship.table_b_datasource_id.in_(user_datasource_ids))
+                ) \
                     .delete(synchronize_session=False)
                 inventory_deleted['table_relationships'] = deleted_relationships
 
@@ -808,7 +811,8 @@ class UserManagementAPI(Resource):
                     else:
                         print(f"[UserDelete] field_index class not exists, skip: {field_index_class}")
             except Exception as e:
-                print(f"[UserDelete] drop field_index class failed: user_id={target_user_id} class={field_index_class} err={e}")
+                print(
+                    f"[UserDelete] drop field_index class failed: user_id={target_user_id} class={field_index_class} err={e}")
 
         return {
             'message': '用户删除成功',
@@ -833,14 +837,15 @@ class UserManagementAPI(Resource):
             }
         }
 
+
 api.add_resource(UploadAvatarAPI, '/avatar')
-#修改密码
+# 修改密码
 api.add_resource(ChangePasswordAPI, '/change_password')
-#登陆注册
+# 登陆注册
 api.add_resource(LoginAPI, '/login')
-#退出登录
+# 退出登录
 api.add_resource(LogoutAPI, '/logout')
-#用户信息获取
+# 用户信息获取
 api.add_resource(UserAPI, '/user')
 # 获取所有用户信息
 api.add_resource(AllUsersAPI, '/users/all')
