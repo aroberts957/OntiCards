@@ -1767,6 +1767,11 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     system_virtual_tables = {"dual", "information_schema", "pg_catalog"}
 
     # 提取 SQL 中的 CTE（公共表表达式）名称，避免将 CTE 名称误判为非白名单表
+    # 匹配模式：WITH cte_name AS ( 或 , cte_name AS (
+    # 注意：不能用 \b，因为 , 前面通常是 \n 或 ) 等非\w字符，
+    #     \b 仅在单词字符-非单词字符边界生效，这会让 ,\n\ncte_name AS ( 这种
+    #     紧随前一个 CTE 闭合括号后的 CTE 全部漏匹配。
+    #     改用 (?<!\w) 排除前面是单词字符的情况，WITH 开头天然满足。
     _cte_pat = re.compile(r'(?<!\w)(?:WITH|,)\s*([A-Za-z_]\w*)\s+AS\s*\(', flags=re.IGNORECASE)
     cte_names = set()
     for m in _cte_pat.finditer(sql_text):
@@ -2235,6 +2240,10 @@ def run_sql_safe_new(
 
     # ---------- 1.x 全局 FROM/JOIN 物理表白名单扫描（先拒绝注释后再做扫描） ----------
     # 提取 SQL 中的 CTE（公共表表达式）名称，避免将 CTE 名称误判为非白名单表
+    # 匹配模式：WITH cte_name AS ( 或 , cte_name AS (
+    # 注意：不能用 \b，因为 , 前面通常是 \n 或 ) 等非\w字符，
+    #     \b 仅在单词字符-非单词字符边界生效，会让紧随前一个 CTE 闭合括号后的
+    #     CTE 全部漏匹配。改用 (?<!\w) 排除前面是单词字符的情况。
     _cte_pat = re.compile(r'(?<!\w)(?:WITH|,)\s*([A-Za-z_]\w*)\s+AS\s*\(', flags=re.IGNORECASE)
     cte_names = set()
     for m in _cte_pat.finditer(sql_stripped):

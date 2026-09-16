@@ -326,6 +326,76 @@ def run_integration():
         print(f"  SKIP: Integration test error: {e}")
 
 
+# ---- AST-based guard: ensure critical locals are defined before use ----
+
+def test_ast_guard_critical_locals():
+    """
+    AST-based check: parse both engine files and verify that in each of
+    run_sql_safe_new and _exec_cluster, every Name-load of critical locals
+    (cte_names, allowed_tables or allowed_with_cte, table_alias_map) is
+    preceded (by line position) by an assignment in the same function scope.
+
+    This catches accidental deletion of definition blocks.
+    """
+    import ast
+
+    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    engine_files = [
+        os.path.join(base, "controllers", "query", "query_by_datacards_agg.py"),
+        os.path.join(base, "controllers", "query", "query_by_datacards_agg_plugin.py"),
+    ]
+
+    # Critical local variable names that must be assigned before use
+    # in each target function.
+    target_funcs = {
+        "run_sql_safe_new": {"cte_names", "allowed_physical", "system_virtual_tables", "table_alias_map"},
+        "_exec_cluster": {"cte_names", "allowed_tables"},
+    }
+
+    for fpath in engine_files:
+        fname = os.path.basename(fpath)
+        with open(fpath, "r", encoding="utf-8") as f:
+            source = f.read()
+        tree = ast.parse(source, filename=fpath)
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            if node.name not in target_funcs:
+                continue
+
+            required = target_funcs[node.name]
+            # Collect all assignment targets (line numbers) in this function
+            assigned = {}  # name -> first assignment line
+            for child in ast.walk(node):
+                if isinstance(child, ast.Assign):
+                    for tgt in child.targets:
+                        if isinstance(tgt, ast.Name):
+                            if tgt.id not in assigned:
+                                assigned[tgt.id] = tgt.lineno
+                elif isinstance(child, ast.AnnAssign):
+                    if isinstance(child.target, ast.Name) and child.value is not None:
+                        if child.target.id not in assigned:
+                            assigned[child.target.id] = child.target.lineno
+                elif isinstance(child, ast.AugAssign):
+                    if isinstance(child.target, ast.Name):
+                        if child.target.id not in assigned:
+                            assigned[child.target.id] = child.target.lineno
+                elif isinstance(child, (ast.For,)):
+                    # for m in ... also defines the loop var
+                    if isinstance(child.target, ast.Name):
+                        if child.target.id not in assigned:
+                            assigned[child.target.id] = child.target.lineno
+
+            # Check each required name
+            for name in required:
+                assert name in assigned, (
+                    f"AST GUARD FAIL: {fname} :: {node.name}() "
+                    f"is missing assignment to '{name}'. "
+                    f"Was the definition block accidentally deleted?"
+                )
+
+
 if __name__ == "__main__":
     print("=== sql_from_guard unit tests ===")
     failed = run_tests()

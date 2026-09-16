@@ -1658,6 +1658,11 @@ def _exec_cluster(user_question: str, db_type: str, connect_info: str,
     system_virtual_tables = {"dual", "information_schema", "pg_catalog"}
 
     # 提取 SQL 中的 CTE（公共表表达式）名称，避免将 CTE 名称误判为非白名单表
+    # 匹配模式：WITH cte_name AS ( 或 , cte_name AS (
+    # 注意：不能用 \b，因为 , 前面通常是 \n 或 ) 等非\w字符，
+    #     \b 仅在单词字符-非单词字符边界生效，这会让 ,\n\ncte_name AS ( 这种
+    #     紧随前一个 CTE 闭合括号后的 CTE 全部漏匹配。
+    #     改用 (?<!\w) 排除前面是单词字符的情况，WITH 开头天然满足。
     _cte_pat = re.compile(r'(?<!\w)(?:WITH|,)\s*([A-Za-z_]\w*)\s+AS\s*\(', flags=re.IGNORECASE)
     cte_names = set()
     for m in _cte_pat.finditer(sql_text):
@@ -2132,6 +2137,39 @@ def run_sql_safe_new(
         raise ValueError("检测到潜在危险关键字，拒绝执行。")
 
     # ---------- 1.x 全局 FROM/JOIN 物理表白名单扫描（先拒绝注释后再做扫描） ----------
+
+    # 提取 SQL 中的 CTE（公共表表达式）名称，避免将 CTE 名称误判为非白名单表
+    # 匹配模式：WITH cte_name AS ( 或 , cte_name AS (
+    # 注意：不能用 \b，因为 , 前面通常是 \n 或 ) 等非\w字符，
+    #     \b 仅在单词字符-非单词字符边界生效，会让紧随前一个 CTE 闭合括号后的
+    #     CTE 全部漏匹配。改用 (?<!\w) 排除前面是单词字符的情况。
+    _cte_pat = re.compile(r'(?<!\w)(?:WITH|,)\s*([A-Za-z_]\w*)\s+AS\s*\(', flags=re.IGNORECASE)
+    cte_names = set()
+    for m in _cte_pat.finditer(sql_stripped):
+        cte_name = m.group(1).strip()
+        if cte_name:
+            cte_names.add(_norm_ident(cte_name))
+    if cte_names:
+        print(f"[cte-check] 检测到 CTE 名称: {cte_names}")
+
+    # 注意：这里先不依赖列白名单；只校验"物理表是否在 cluster_tables 允许的集合"即可
+    allowed_physical = { _norm_ident(t.get("table_name")) for t in (cluster_tables or []) }
+    # 将 CTE 名称加入允许列表（CTE 是临时结果集，不是物理表）
+    allowed_physical.update(cte_names)
+
+    # 系统虚拟表白名单（这些表是安全的，不需要在 cluster_tables 中）
+    system_virtual_tables = {
+        "dual",  # Oracle 虚拟表
+        "information_schema",  # 通用信息模式
+        "pg_catalog",  # PostgreSQL 系统目录
+    }
+
+    # 为了避免误匹配函数内的 FROM（如 EXTRACT(YEAR FROM ...), SUBSTRING(... FROM ...)），
+    # 先将这些函数调用临时替换
+    temp_sql_for_table_check = sql_stripped
+    temp_sql_for_table_check = re.sub(r'\b(EXTRACT|SUBSTRING|POSITION|TRIM)\s*\([^)]+\bFROM\b[^)]+\)',
+                                       'FUNC_WITH_FROM_PLACEHOLDER', temp_sql_for_table_check, flags=re.IGNORECASE)
+
     # 使用括号/引号感知的扫描器替代一次性正则，覆盖逗号隐式连接
     for _ref in iter_from_table_refs(temp_sql_for_table_check):
         if _ref.derived:
